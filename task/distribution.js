@@ -2,192 +2,145 @@ const { namespaceWrapper } = require('@_koii/namespace-wrapper');
 
 class Distribution {
   /**
-   * Generates and submits the distribution list for a given round
-   * @param {number} round - The current round number
-   * @returns {void}
-   *
+   * Генерация и отправка списка распределения для текущего раунда.
+   * @param {number} round - Номер текущего раунда
    */
-  submitDistributionList = async round => {
-    console.log(`SUBMIT DISTRIBUTION LIST CALLED WITH ROUND ${round}`);
+  async submitDistributionList(round) {
+    console.log(`Отправка списка распределения для раунда ${round}`);
     try {
+      // Генерация списка распределения на основе кэшированных данных
       const distributionList = await this.generateDistributionList(round);
       if (!Object.keys(distributionList).length) {
-        return console.log('NO DISTRIBUTION LIST GENERATED');
+        return console.log('Список распределения не сгенерирован');
       }
-      const decider = await namespaceWrapper.uploadDistributionList(
-        distributionList,
-        round,
-      );
-      console.log('DECIDER', decider);
+      
+      // Отправка списка распределения в сеть Koii
+      const decider = await namespaceWrapper.uploadDistributionList(distributionList, round);
       if (decider) {
-        const response =
-          await namespaceWrapper.distributionListSubmissionOnChain(round);
-        console.log('RESPONSE FROM DISTRIBUTION LIST', response);
+        const response = await namespaceWrapper.distributionListSubmissionOnChain(round);
+        console.log('Результат отправки списка распределения:', response);
       }
-    } catch (err) {
-      console.log('ERROR IN SUBMIT DISTRIBUTION', err);
+    } catch (error) {
+      console.log('Ошибка при отправке списка распределения:', error);
     }
-  };
-
-  /**
-   * Audits the distribution list for a given round
-   * @param {number} roundNumber - The current round number
-   * @returns {void}
-   *
-   */
-  async auditDistribution(roundNumber) {
-    console.log('AUDIT DISTRIBUTION CALLED WITHIN ROUND: ', roundNumber);
-    await namespaceWrapper.validateAndVoteOnDistributionList(
-      this.validateDistribution,
-      roundNumber,
-    );
   }
-  /**
-   * Generates the distribution list for a given round in your logic
-   * @param {number} round - The current round number
-   * @returns {Promise<object>} The distribution list for the given round
-   */
-  async generateDistributionList(round, _dummyTaskState) {
-    try {
-      console.log('GENERATE DISTRIBUTION LIST CALLED WITH ROUND', round);
-      let distributionList = {};
-      let distributionCandidates = [];
-      let taskAccountDataJSON, taskStakeListJSON;
-      try {
-        taskAccountDataJSON =
-          await namespaceWrapper.getTaskSubmissionInfo(round);
-        taskStakeListJSON = await namespaceWrapper.getTaskState({
-          is_stake_list_required: true,
-        });
-      } catch (error) {
-        console.error('ERROR FETCHING TASK SUBMISSION DATA', error);
-        return distributionList;
-      }
-      if (!taskAccountDataJSON || !taskStakeListJSON) {
-        console.error('ERROR IN FETCHING TASK SUBMISSION DATA');
-        return distributionList;
-      }
-      if (!taskAccountDataJSON?.submissions[round]) {
-        console.log(`NO SUBMISSIONS FOUND IN ROUND ${round}`);
-        return distributionList;
-      }
-      const submissions = taskAccountDataJSON.submissions[round];
-      const submissions_audit_trigger =
-        taskAccountDataJSON.submissions_audit_trigger[round];
-      console.log(taskAccountDataJSON.submissions);
-      if (!submissions) {
-        return distributionList;
-      }
-      const keys = Object.keys(submissions);
-      const stakeList = taskStakeListJSON.stake_list;
-      // Edit Your Stake Slash Logic Here
-      keys.forEach(candidatePublicKey => {
-        const votes =
-          submissions_audit_trigger?.[candidatePublicKey]?.votes || [];
-        const validVotes = votes.reduce(
-          (acc, vote) => acc + (vote.is_valid ? 1 : -1),
-          0,
-        );
 
-        if (validVotes < 0) {
+  /**
+   * Генерация списка распределения для раунда на основе данных сабмишенов.
+   * @param {number} round - Номер текущего раунда
+   * @returns {Promise<object>} Список распределения
+   */
+  async generateDistributionList(round) {
+    try {
+      console.log(`Генерация списка распределения для раунда ${round}`);
+      let distributionList = {};
+      let validCandidates = [];
+      let taskAccountDataJSON, taskStakeListJSON;
+
+      // Получаем информацию о сабмишенах и стейках
+      try {
+        taskAccountDataJSON = await namespaceWrapper.getTaskSubmissionInfo(round);
+        taskStakeListJSON = await namespaceWrapper.getTaskState({ is_stake_list_required: true });
+      } catch (error) {
+        console.error('Ошибка при получении данных сабмишенов и стейков:', error);
+        return distributionList;
+      }
+
+      const submissions = taskAccountDataJSON?.submissions[round];
+      const stakeList = taskStakeListJSON?.stake_list;
+      if (!submissions || !stakeList) {
+        console.log(`Нет сабмишенов или стейков для раунда ${round}`);
+        return distributionList;
+      }
+
+      const submissions_audit_trigger = taskAccountDataJSON?.submissions_audit_trigger?.[round] || {};
+
+      // Валидация участников и создание списка
+      Object.keys(submissions).forEach(candidatePublicKey => {
+        const votes = submissions_audit_trigger?.[candidatePublicKey]?.votes || [];
+        const validVotes = votes.reduce((acc, vote) => acc + (vote.is_valid ? 1 : -1), 0);
+
+        if (validVotes >= 0) {
+          validCandidates.push(candidatePublicKey);
+        } else {
           const slashedStake = stakeList[candidatePublicKey] * 0.7;
           distributionList[candidatePublicKey] = -slashedStake;
-          console.log(
-            'CANDIDATE STAKE SLASHED',
-            candidatePublicKey,
-            slashedStake,
-          );
-        } else {
-          distributionCandidates.push(candidatePublicKey);
+          console.log('Ставка кандидата снижена:', candidatePublicKey, slashedStake);
         }
       });
-      // Edit Your Distribution Logic Here
-      const reward = Math.floor(
-        taskStakeListJSON.bounty_amount_per_round /
-          distributionCandidates.length,
-      );
-      console.log('REWARD PER NODE', reward);
-      distributionCandidates.forEach(candidate => {
-        distributionList[candidate] = reward;
+
+      // Распределение вознаграждения между валидными кандидатами
+      const rewardPerNode = Math.floor(taskStakeListJSON.bounty_amount_per_round / validCandidates.length);
+      validCandidates.forEach(candidate => {
+        distributionList[candidate] = rewardPerNode;
       });
-      console.log('FINAL DISTRIBUTION LIST', distributionList);
+
+      console.log('Финальный список распределения:', distributionList);
       return distributionList;
-    } catch (err) {
-      console.log('ERROR GENERATING DISTRIBUTION LIST', err);
+    } catch (error) {
+      console.log('Ошибка при генерации списка распределения:', error);
+      return {};
     }
   }
 
   /**
-   * Validates the distribution list for a given round in your logic
-   * The logic can be same as generation of distribution list function and based on the comparision will final object , decision can be made
-   * @param {string} distributionListSubmitter - The public key of the distribution list submitter
-   * @param {number} round - The current round number
-   * @param {object} _dummyDistributionList
-   * @param {object} _dummyTaskState
-   * @returns {Promise<boolean>} The validation result, return true if the distribution list is correct, false otherwise
+   * Аудит списка распределения для текущего раунда.
+   * @param {number} roundNumber - Номер текущего раунда
    */
-  validateDistribution = async (
-    distributionListSubmitter,
-    round,
-    _dummyDistributionList,
-    _dummyTaskState,
-  ) => {
+  async auditDistribution(roundNumber) {
+    console.log(`Аудит списка распределения для раунда ${roundNumber}`);
+    await namespaceWrapper.validateAndVoteOnDistributionList(
+      this.validateDistribution.bind(this),
+      roundNumber
+    );
+  }
+
+  /**
+   * Валидация списка распределения.
+   * @param {string} distributionListSubmitter - Публичный ключ отправителя списка распределения
+   * @param {number} round - Номер текущего раунда
+   * @returns {Promise<boolean>} Результат валидации
+   */
+  async validateDistribution(distributionListSubmitter, round) {
     try {
-      console.log('DISTRIBUTION LIST SUBMITTER', distributionListSubmitter);
-      const rawDistributionList = await namespaceWrapper.getDistributionList(
-        distributionListSubmitter,
-        round,
-      );
-      let fetchedDistributionList;
+      const rawDistributionList = await namespaceWrapper.getDistributionList(distributionListSubmitter, round);
       if (rawDistributionList == null) {
         return true;
-      } else {
-        fetchedDistributionList = JSON.parse(rawDistributionList);
       }
-      console.log('FETCHED DISTRIBUTION LIST', fetchedDistributionList);
-      const generateDistributionList = await this.generateDistributionList(
-        round,
-        _dummyTaskState,
-      );
 
-      if (Object.keys(generateDistributionList).length === 0) {
-        console.log('UNABLE TO GENERATE DISTRIBUTION LIST');
-        return true;
-      }
-      const parsed = fetchedDistributionList;
-      console.log(
-        'COMPARE DISTRIBUTION LIST',
-        parsed,
-        generateDistributionList,
-      );
-      const result = await this.shallowEqual(parsed, generateDistributionList);
-      console.log('RESULT', result);
-      return result;
-    } catch (err) {
-      console.log('ERROR IN VALIDATING DISTRIBUTION', err);
+      const fetchedDistributionList = JSON.parse(rawDistributionList);
+      const generatedDistributionList = await this.generateDistributionList(round);
+
+      return this.shallowEqual(fetchedDistributionList, generatedDistributionList);
+    } catch (error) {
+      console.log('Ошибка при валидации списка распределения:', error);
       return false;
     }
-  };
+  }
+
   /**
-   * Compares two objects for equality
-   * @param {object} parsed - The first object
-   * @param {object} generatedDistributionList - The second object
-   * @returns {boolean} The result of the comparison
+   * Сравнение двух объектов на идентичность.
+   * @param {object} obj1 - Первый объект
+   * @param {object} obj2 - Второй объект
+   * @returns {boolean} Результат сравнения
    */
-  async shallowEqual(parsed, generatedDistributionList) {
-    const normalize = obj => (typeof obj === 'string' ? JSON.parse(obj) : obj);
-    parsed = normalize(parsed);
-    generatedDistributionList = normalize(generatedDistributionList);
-    const keys1 = Object.keys(parsed);
-    const keys2 = Object.keys(generatedDistributionList);
-    return (
-      keys1.length === keys2.length &&
-      keys1.every(key => parsed[key] === generatedDistributionList[key])
-    );
+  shallowEqual(obj1, obj2) {
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+
+    if (keys1.length !== keys2.length) {
+      return false;
+    }
+
+    for (let key of keys1) {
+      if (obj1[key] !== obj2[key]) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }
 
 const distribution = new Distribution();
-module.exports = {
-  distribution,
-};
+module.exports = { distribution };

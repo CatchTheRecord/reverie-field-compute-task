@@ -1,9 +1,9 @@
 # Name and metadata of your task
-task_name: 'task name'
-author: 'Koii'
-description: 'description'
-repositoryUrl: 'https://github.com/koii-network/task-template' # Replace with your own repo URL
-imageUrl: 'imageUrl'
+task_name: 'Reverie Field Compute Task'
+author: 'Reverie Field Project'
+description: 'Run this task to earn $SONO KPL tokens'
+repositoryUrl: 'https://github.com/CatchTheRecord/reverie-field-compute-task' # Replace with your own repo URL
+imageUrl: 'https://indigo-eldest-dingo-769.mypinata.cloud/ipfs/QmUf14qG4YQMwPGRiCxadoA9fnT4ntYGWw7ubg1pxV79E6'
 infoUrl: 'infoUrl'
 
 # Task executable network: DEVELOPMENT, ARWEAVE, or IPFS

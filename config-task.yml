@@ -3,7 +3,7 @@ task_name: 'Reverie Field Compute'
 author: 'Reverie Field Project'
 description: 'Run this task to earn $SONO KPL tokens'
 repositoryUrl: 'https://github.com/CatchTheRecord/reverie-field-compute-task' # Replace with your own repo URL
-imageUrl: 'https://indigo-eldest-dingo-769.mypinata.cloud/ipfs/QmUf14qG4YQMwPGRiCxadoA9fnT4ntYGWw7ubg1pxV79E6'
+imageUrl: 'https://indigo-eldest-dingo-769.mypinata.cloud/ipfs/QmdeYMo2aBQt9Qox5bMCNnh53jDxiZA5jnLMcJb6WLrx42'
 infoUrl: 'infoUrl'
 
 # Task executable network: DEVELOPMENT, ARWEAVE, or IPFS

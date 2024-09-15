@@ -1,7 +1,11 @@
 const { namespaceWrapper } = require('@_koii/namespace-wrapper');
-const fetch = require('node-fetch');
+const { KoiiStorageClient } = require('@_koii/storage-task-sdk'); // Импорт KoiiStorageClient
 
 class Audit {
+  constructor() {
+    this.client = new KoiiStorageClient(); // Инициализация KoiiStorageClient
+  }
+
   /**
    * Валидация сабмишена для узла.
    * @param {string} submission_value - CID сабмишена из IPFS.
@@ -46,16 +50,10 @@ class Audit {
    */
   async getDataFromIPFS(cid) {
     try {
-      const ipfsUrl = `https://ipfs.io/ipfs/${cid}`;
-      console.log(`Запрос данных из IPFS по адресу: ${ipfsUrl}`);
-      const response = await fetch(ipfsUrl);
-
-      if (!response.ok) {
-        console.error('Ошибка ответа от IPFS:', response.statusText);
-        return null;
-      }
-
-      const data = await response.json();
+      const fileName = 'submittedData.json'; // Имя файла для извлечения
+      const blob = await this.client.getFile(cid, fileName);
+      const text = await blob.text();
+      const data = JSON.parse(text); // Преобразуем текстовые данные в JSON
       console.log('Данные успешно получены из IPFS:', data);
       return data;
     } catch (error) {

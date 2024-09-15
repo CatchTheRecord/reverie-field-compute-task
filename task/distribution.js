@@ -1,7 +1,11 @@
 const { namespaceWrapper } = require('@_koii/namespace-wrapper');
-const fetch = require('node-fetch');
+const { KoiiStorageClient } = require('@_koii/storage-task-sdk'); // Импорт KoiiStorageClient
 
 class Distribution {
+  constructor() {
+    this.storageClient = new KoiiStorageClient();
+  }
+
   /**
    * Отправка списка распределения для раунда.
    * @param {number} round - Номер раунда.
@@ -14,7 +18,10 @@ class Distribution {
         return console.log('Список распределения не сгенерирован');
       }
 
-      const decider = await namespaceWrapper.uploadDistributionList(distributionList, round);
+      // Загружаем список распределения в IPFS
+      const cid = await this.uploadToIPFS(distributionList);
+
+      const decider = await namespaceWrapper.uploadDistributionList(cid, round);
       if (decider) {
         const response = await namespaceWrapper.distributionListSubmissionOnChain(round);
         console.log('Результат отправки списка распределения:', response);
@@ -77,6 +84,24 @@ class Distribution {
     } catch (error) {
       console.log('Ошибка при генерации списка распределения:', error);
       return {};
+    }
+  }
+
+  /**
+   * Загружает список распределения в IPFS.
+   * @param {Object} data - Список распределения для загрузки в IPFS.
+   * @returns {Promise<string>} - CID загруженных данных.
+   */
+  async uploadToIPFS(data) {
+    try {
+      const stakingAccount = await namespaceWrapper.getSubmitterAccount();
+      const response = await this.storageClient.uploadFile(JSON.stringify(data), stakingAccount);
+      const cid = response.cid;
+      console.log('Список распределения загружен в IPFS, CID:', cid);
+      return cid;
+    } catch (error) {
+      console.error('Ошибка при загрузке списка распределения в IPFS:', error);
+      throw error;
     }
   }
 

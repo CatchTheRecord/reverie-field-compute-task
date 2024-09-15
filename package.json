@@ -17,12 +17,14 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@_koii/namespace-wrapper": "^1.0.8",
+    "@_koii/namespace-wrapper": "^1.0.10",
+    "@_koii/storage-task-sdk": "^1.2.7",
     "@_koii/web3.js": "^0.1.11",
     "axios": "^1.7.2",
     "cross-spawn": "^7.0.3",
     "dotenv": "^16.3.0",
     "dotenv-webpack": "^8.1.0",
+    "node-fetch": "^3.3.2",
     "nodemon": "^3.1.0",
     "tail": "^2.2.6"
   },

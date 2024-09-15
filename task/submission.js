@@ -1,13 +1,18 @@
 const { namespaceWrapper } = require('@_koii/namespace-wrapper');
+const { KoiiStorageClient } = require('@_koii/storage-task-sdk'); // Импорт KoiiStorageClient
 
 class Submission {
+  constructor() {
+    this.client = new KoiiStorageClient(); // Инициализация KoiiStorageClient
+  }
+
   /**
    * Задача Koii для получения данных игроков с вашего серверного эндпоинта.
    * @param {number} round - Номер раунда
    */
   async task(round) {
     console.log(`Запуск задачи для раунда: ${round}`);
-    
+
     // Получаем данные игроков с серверного кода через эндпоинт
     const playersData = await this.getPlayerDataFromServer();
 
@@ -20,7 +25,7 @@ class Submission {
     for (const playerData of playersData) {
       console.log(`Обработка данных игрока: ${playerData.username}`);
       const isUpdated = await this.cachePlayerDataIfUpdated(playerData);
-      
+
       if (isUpdated) {
         console.log(`Данные игрока ${playerData.username} были изменены и обновлены в кэше.`);
       } else {
@@ -39,7 +44,7 @@ class Submission {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
-      
+
       if (!response.ok) {
         console.error('Ошибка ответа от сервера:', response.statusText);
         return [];
@@ -132,8 +137,9 @@ class Submission {
         return;
       }
 
-      // Загружаем данные в IPFS
-      const ipfsCid = await this.uploadToIPFS(cachedPlayersData);
+      // Загружаем данные в IPFS через KoiiStorageClient
+      const userStaking = await namespaceWrapper.getSubmitterAccount();
+      const ipfsCid = await this.uploadToIPFS(cachedPlayersData, userStaking);
       console.log('Данные загружены в IPFS, CID:', ipfsCid);
 
       // Отправляем CID на сервер через сабмишен
@@ -146,14 +152,20 @@ class Submission {
   }
 
   /**
-   * Загружает данные в IPFS.
+   * Загружает данные в IPFS через KoiiStorageClient.
    * @param {Array} data - Данные для загрузки в IPFS
+   * @param {Object} userStaking - Информация о стейкинге пользователя
    * @returns {Promise<string>} - CID загруженных данных
    */
-  async uploadToIPFS(data) {
+  async uploadToIPFS(data, userStaking) {
     try {
-      const cid = await namespaceWrapper.uploadToIPFS(data);
-      return cid;
+      const filePath = './cachedPlayersData.json'; // Локальный путь для временного файла
+      const fs = require('fs');
+      fs.writeFileSync(filePath, JSON.stringify(data)); // Сохраняем данные временно
+
+      // Используем KoiiStorageClient для загрузки файла
+      const fileUploadResponse = await this.client.uploadFile(filePath, userStaking);
+      return fileUploadResponse.cid; // Возвращаем CID
     } catch (error) {
       console.error('Ошибка при загрузке данных в IPFS:', error);
       throw error;

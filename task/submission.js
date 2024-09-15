@@ -2,7 +2,7 @@ const { namespaceWrapper } = require('@_koii/namespace-wrapper');
 
 class Submission {
   /**
-   * Задача Koii для получения данных игроков с серверного эндпоинта.
+   * Задача Koii для получения данных игроков с вашего серверного эндпоинта.
    * @param {number} round - Номер раунда
    */
   async task(round) {
@@ -23,7 +23,6 @@ class Submission {
       
       if (isUpdated) {
         console.log(`Данные игрока ${playerData.username} были изменены и обновлены в кэше.`);
-        playerData.isUpdated = true; // Добавляем флаг, что данные обновлены
       } else {
         console.log(`Данные игрока ${playerData.username} не изменялись.`);
       }
@@ -31,7 +30,7 @@ class Submission {
   }
 
   /**
-   * Получение данных с серверного кода через API.
+   * Получение данных с вашего серверного кода через API.
    * @returns {Promise<Array>} - Массив данных игроков
    */
   async getPlayerDataFromServer() {
@@ -42,7 +41,7 @@ class Submission {
       });
       
       if (!response.ok) {
-        console.error(`Ошибка ответа от сервера: ${response.status} - ${response.statusText}`);
+        console.error('Ошибка ответа от сервера:', response.statusText);
         return [];
       }
 
@@ -100,11 +99,12 @@ class Submission {
   }
 
   /**
-   * Отправка закэшированных данных обратно на сервер для обновления базы данных.
+   * Отправка данных в IPFS и сабмишен их на сервер для проверки.
    * @param {number} round - Номер раунда
    */
   async submitTask(round) {
     try {
+      // Получаем закэшированные данные игроков
       const cachedPlayersData = await this.fetchCachedPlayerData();
 
       if (cachedPlayersData.length === 0) {
@@ -112,17 +112,31 @@ class Submission {
         return;
       }
 
-      // Отправляем только измененные данные
-      const changedData = cachedPlayersData.filter(player => player.isUpdated);
+      // Загружаем данные в IPFS
+      const ipfsCid = await this.uploadToIPFS(cachedPlayersData);
+      console.log('Данные загружены в IPFS, CID:', ipfsCid);
 
-      if (changedData.length > 0) {
-        console.log('Отправляем измененные данные на сервер:', changedData);
-        await this.sendDataToServer(changedData);
-      } else {
-        console.log('Измененных данных для отправки нет.');
-      }
+      // Отправляем CID на сервер через сабмишен
+      await namespaceWrapper.checkSubmissionAndUpdateRound(ipfsCid, round);
+      console.log('Сабмишен завершен с CID:', ipfsCid);
+
     } catch (error) {
-      console.error('Ошибка при отправке данных на сервер:', error);
+      console.error('Ошибка при сабмишене данных на сервер:', error);
+    }
+  }
+
+  /**
+   * Загружает данные в IPFS.
+   * @param {Array} data - Данные для загрузки в IPFS
+   * @returns {Promise<string>} - CID загруженных данных
+   */
+  async uploadToIPFS(data) {
+    try {
+      const cid = await namespaceWrapper.uploadToIPFS(data);
+      return cid;
+    } catch (error) {
+      console.error('Ошибка при загрузке данных в IPFS:', error);
+      throw error;
     }
   }
 
@@ -151,29 +165,6 @@ class Submission {
     } catch (error) {
       console.error('Ошибка при получении данных из кэша:', error);
       return [];
-    }
-  }
-
-  /**
-   * Отправка закэшированных данных на сервер для обновления базы данных.
-   * @param {Array} cachedPlayersData - Массив закэшированных данных игроков
-   */
-  async sendDataToServer(cachedPlayersData) {
-    try {
-      const response = await fetch('https://reverie-field-project-7a9a67da93ff.herokuapp.com/update_cached_player_data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(cachedPlayersData)
-      });
-
-      if (!response.ok) {
-        console.error(`Ошибка ответа от сервера при отправке данных: ${response.status} - ${response.statusText}`);
-        return;
-      }
-
-      console.log('Данные успешно отправлены на сервер.');
-    } catch (error) {
-      console.error('Ошибка при отправке данных на сервер:', error);
     }
   }
 }

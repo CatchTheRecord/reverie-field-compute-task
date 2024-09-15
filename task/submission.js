@@ -155,24 +155,32 @@ class Submission {
   }
 
   /**
-   * Загружает данные в IPFS через KoiiStorageClient.
+   * Загружает данные в IPFS через KoiiStorageClient с повторными попытками при возникновении ошибок.
    * @param {Array} data - Данные для загрузки в IPFS
    * @param {Object} userStaking - Информация о стейкинге пользователя
+   * @param {number} retries - Количество попыток в случае ошибки (по умолчанию 3)
    * @returns {Promise<string>} - CID загруженных данных
    */
-  async uploadToIPFS(data, userStaking) {
-    try {
-      const tempDir = os.tmpdir(); // Используем временную директорию
-      const filePath = path.join(tempDir, 'cachedPlayersData.json'); // Путь к временному файлу
+  async uploadToIPFS(data, userStaking, retries = 3) {
+    const tempDir = os.tmpdir(); // Используем временную директорию
+    const filePath = path.join(tempDir, 'cachedPlayersData.json'); // Путь к временному файлу
 
-      fs.writeFileSync(filePath, JSON.stringify(data)); // Сохраняем данные временно
+    fs.writeFileSync(filePath, JSON.stringify(data)); // Сохраняем данные временно
 
-      // Используем KoiiStorageClient для загрузки файла
-      const fileUploadResponse = await this.client.uploadFile(filePath, userStaking);
-      return fileUploadResponse.cid; // Возвращаем CID
-    } catch (error) {
-      console.error('Ошибка при загрузке данных в IPFS:', error);
-      throw error;
+    while (retries > 0) {
+      try {
+        const fileUploadResponse = await this.client.uploadFile(filePath, userStaking);
+        return fileUploadResponse.cid; // Возвращаем CID
+      } catch (error) {
+        if (retries > 1 && error.message.includes('503')) {
+          console.log('Ошибка при загрузке данных в IPFS, повторная попытка через 5 секунд...');
+          retries--;
+          await new Promise(resolve => setTimeout(resolve, 5000)); // Ожидание 5 секунд
+        } else {
+          console.error('Ошибка при загрузке данных в IPFS:', error);
+          throw error;
+        }
+      }
     }
   }
 

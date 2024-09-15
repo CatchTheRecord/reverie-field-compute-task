@@ -69,6 +69,7 @@ class Submission {
         // Сравниваем данные: если изменились, обновляем кэш
         if (this.isPlayerDataChanged(cachedPlayerData, playerData)) {
           await namespaceWrapper.storeSet(cacheKey, JSON.stringify(playerData));
+          await this.addKeyToCacheList(cacheKey);
           return true; // Данные изменились и были обновлены
         } else {
           return false; // Данные не изменились
@@ -76,11 +77,30 @@ class Submission {
       } else {
         // Если данных нет в кэше, просто сохраняем их
         await namespaceWrapper.storeSet(cacheKey, JSON.stringify(playerData));
+        await this.addKeyToCacheList(cacheKey);
         return true; // Новые данные были сохранены
       }
     } catch (error) {
       console.error('Ошибка при кэшировании данных игрока:', error);
       return false;
+    }
+  }
+
+  /**
+   * Добавление ключа в список кэшированных данных, если он отсутствует.
+   * @param {string} key - Ключ для кэширования.
+   */
+  async addKeyToCacheList(key) {
+    try {
+      let cacheKeys = await namespaceWrapper.storeGet('cacheKeys');
+      cacheKeys = cacheKeys ? JSON.parse(cacheKeys) : [];
+
+      if (!cacheKeys.includes(key)) {
+        cacheKeys.push(key);
+        await namespaceWrapper.storeSet('cacheKeys', JSON.stringify(cacheKeys));
+      }
+    } catch (error) {
+      console.error('Ошибка при добавлении ключа в список кэшированных данных:', error);
     }
   }
 
@@ -146,14 +166,10 @@ class Submission {
    */
   async fetchCachedPlayerData() {
     try {
-      if (!namespaceWrapper.storeListKeys) {
-        console.error('Ошибка: функция storeListKeys не найдена');
-        return [];
-      }
+      let cacheKeys = await namespaceWrapper.storeGet('cacheKeys');
+      cacheKeys = cacheKeys ? JSON.parse(cacheKeys) : [];
 
-      const cacheKeys = await namespaceWrapper.storeListKeys();
       const playersData = [];
-
       for (const key of cacheKeys) {
         const playerData = await namespaceWrapper.storeGet(key);
         if (playerData) {

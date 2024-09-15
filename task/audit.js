@@ -27,7 +27,9 @@ class Audit {
       if (isValid) {
         console.log(`Сабмишен для раунда ${round} прошёл валидацию.`);
       } else {
-        console.error(`Сабмишен для раунда ${round} не прошёл валидацию.`);
+        console.error(`Сабмишен для раунда ${round} не прошёл валидацию, но может быть частично принят.`);
+        // Лояльная валидация - считаем сабмишен валидным, если несоответствия минимальны
+        return this.lenientValidation(cachedData, ipfsData);
       }
 
       return isValid;
@@ -88,15 +90,50 @@ class Audit {
   }
 
   /**
+   * Лояльная проверка данных с допустимым уровнем несовпадений.
+   * @param {Array} cachedData - Закэшированные данные.
+   * @param {Array} submittedData - Данные из IPFS.
+   * @returns {boolean} - True, если данные достаточно близки, иначе false.
+   */
+  lenientValidation(cachedData, submittedData) {
+    let mismatches = 0;
+
+    for (let i = 0; i < cachedData.length; i++) {
+      if (JSON.stringify(cachedData[i]) !== JSON.stringify(submittedData[i])) {
+        mismatches++;
+        console.warn(`Небольшое несовпадение данных для игрока ${cachedData[i]?.username || 'неизвестный'}`);
+      }
+    }
+
+    // Если несоответствий менее 10%, считаем сабмишен валидным
+    const mismatchPercentage = (mismatches / cachedData.length) * 100;
+    console.log(`Процент несовпадений: ${mismatchPercentage}%`);
+
+    if (mismatchPercentage <= 10) {
+      console.log('Несоответствия незначительны, сабмишен принят.');
+      return true;
+    } else {
+      console.error('Слишком много несовпадений, сабмишен отклонён.');
+      return false;
+    }
+  }
+
+  /**
    * Получение всех закэшированных данных игроков.
    * @returns {Promise<Array>} - Массив данных игроков из кэша.
    */
   async fetchCachedPlayerData() {
     try {
-      const cacheKeys = await namespaceWrapper.storeListKeys();
+      const cacheKeys = await namespaceWrapper.storeGet('cacheKeys');
+      if (!cacheKeys) {
+        console.error('Не удалось получить список кэшированных ключей.');
+        return [];
+      }
+
+      const parsedKeys = JSON.parse(cacheKeys);
       const playersData = [];
 
-      for (const key of cacheKeys) {
+      for (const key of parsedKeys) {
         const playerData = await namespaceWrapper.storeGet(key);
         if (playerData) {
           playersData.push(JSON.parse(playerData));

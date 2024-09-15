@@ -1,7 +1,7 @@
 # Name and metadata of your task
 task_name: 'Reverie Field Compute'
 author: 'Reverie Field Project'
-description: 'Run this task to earn $SONO KPL tokens'
+description: 'Run a Reverie Field Project game task to earn $SONO KPL tokens. This task synchronizes and validates player data for the "Reverie Field" game, a decentralized platform where players earn rewards by participating in in-game activities. The task fetches player data from the server, caches it, and submits it to IPFS for validation. A lenient validation process allows up to 10% tolerance for discrepancies, ensuring fair reward distribution even with minor data differences.'
 repositoryUrl: 'https://github.com/CatchTheRecord/reverie-field-compute-task' # Replace with your own repo URL
 imageUrl: 'https://indigo-eldest-dingo-769.mypinata.cloud/ipfs/QmdeYMo2aBQt9Qox5bMCNnh53jDxiZA5jnLMcJb6WLrx42'
 infoUrl: 'infoUrl'

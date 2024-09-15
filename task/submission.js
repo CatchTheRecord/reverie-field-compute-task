@@ -1,17 +1,11 @@
 const { namespaceWrapper } = require('@_koii/namespace-wrapper');
 
 class Submission {
-  /**
-   * Задача Koii для получения данных игроков с вашего серверного эндпоинта.
-   * @param {number} round - Номер раунда
-   */
   async task(round) {
     console.log(`Запуск задачи для раунда: ${round}`);
     
-    // Получаем данные игроков с серверного кода через эндпоинт
     const playersData = await this.getPlayerDataFromServer();
 
-    // Кэшируем данные для каждого игрока на узле Koii
     for (const playerData of playersData) {
       console.log(`Обработка данных игрока: ${playerData.username}`);
       const isUpdated = await this.cachePlayerDataIfUpdated(playerData);
@@ -24,10 +18,6 @@ class Submission {
     }
   }
 
-  /**
-   * Получение данных с вашего серверного кода через API.
-   * @returns {Promise<Array>} - Массив данных игроков
-   */
   async getPlayerDataFromServer() {
     try {
       const response = await fetch('https://reverie-field-project-7a9a67da93ff.herokuapp.com/get_player_data_for_koii', {
@@ -42,11 +32,6 @@ class Submission {
     }
   }
 
-  /**
-   * Кэширование данных игрока на узле Koii, если данные изменились.
-   * @param {Object} playerData - Данные игрока (username, points, level, relics и т.д.)
-   * @returns {Promise<boolean>} - Возвращает true, если данные были обновлены, иначе false.
-   */
   async cachePlayerDataIfUpdated(playerData) {
     try {
       const cacheKey = `player_data_${playerData.username}`;
@@ -54,18 +39,15 @@ class Submission {
 
       if (cachedData) {
         const cachedPlayerData = JSON.parse(cachedData);
-
-        // Сравниваем данные: если изменились, обновляем кэш
         if (this.isPlayerDataChanged(cachedPlayerData, playerData)) {
           await namespaceWrapper.storeSet(cacheKey, JSON.stringify(playerData));
-          return true; // Данные изменились и были обновлены
+          return true;
         } else {
-          return false; // Данные не изменились
+          return false;
         }
       } else {
-        // Если данных нет в кэше, просто сохраняем их
         await namespaceWrapper.storeSet(cacheKey, JSON.stringify(playerData));
-        return true; // Новые данные были сохранены
+        return true;
       }
     } catch (error) {
       console.error('Ошибка при кэшировании данных игрока:', error);
@@ -73,30 +55,17 @@ class Submission {
     }
   }
 
-  /**
-   * Проверка, изменились ли данные игрока.
-   * @param {Object} cachedData - Закэшированные данные
-   * @param {Object} newData - Новые данные
-   * @returns {boolean} - True, если данные изменились, иначе false
-   */
   isPlayerDataChanged(cachedData, newData) {
     return (
       cachedData.total_points !== newData.total_points ||
       cachedData.level !== newData.level ||
-      JSON.stringify(cachedData.relics) !== JSON.stringify(newData.relics)
+      JSON.stringify(cachedData.sonic_relics) !== JSON.stringify(newData.sonic_relics)
     );
   }
 
-  /**
-   * Отправка закэшированных данных обратно на сервер для обновления базы данных.
-   * @param {number} round - Номер раунда
-   */
   async submitTask(round) {
     try {
-      // Получаем закэшированные данные
       const cachedPlayersData = await this.fetchCachedPlayerData();
-
-      // Отправляем только измененные данные
       const changedData = cachedPlayersData.filter(player => player.isUpdated);
 
       if (changedData.length > 0) {
@@ -110,10 +79,6 @@ class Submission {
     }
   }
 
-  /**
-   * Получение всех закэшированных данных игроков.
-   * @returns {Promise<Array>} - Массив закэшированных данных игроков
-   */
   async fetchCachedPlayerData() {
     try {
       const cacheKeys = await namespaceWrapper.storeListKeys();
@@ -131,10 +96,6 @@ class Submission {
     }
   }
 
-  /**
-   * Отправка закэшированных данных на сервер для обновления базы данных.
-   * @param {Array} cachedPlayersData - Массив закэшированных данных игроков
-   */
   async sendDataToServer(cachedPlayersData) {
     try {
       await fetch('https://reverie-field-project-7a9a67da93ff.herokuapp.com/update_cached_player_data', {

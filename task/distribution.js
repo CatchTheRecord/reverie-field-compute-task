@@ -1,20 +1,14 @@
 const { namespaceWrapper } = require('@_koii/namespace-wrapper');
 
 class Distribution {
-  /**
-   * Генерация и отправка списка распределения для текущего раунда.
-   * @param {number} round - Номер текущего раунда
-   */
   async submitDistributionList(round) {
     console.log(`Отправка списка распределения для раунда ${round}`);
     try {
-      // Генерация списка распределения на основе кэшированных данных
       const distributionList = await this.generateDistributionList(round);
       if (!Object.keys(distributionList).length) {
         return console.log('Список распределения не сгенерирован');
       }
       
-      // Отправка списка распределения в сеть Koii
       const decider = await namespaceWrapper.uploadDistributionList(distributionList, round);
       if (decider) {
         const response = await namespaceWrapper.distributionListSubmissionOnChain(round);
@@ -25,11 +19,6 @@ class Distribution {
     }
   }
 
-  /**
-   * Генерация списка распределения для раунда на основе данных сабмишенов.
-   * @param {number} round - Номер текущего раунда
-   * @returns {Promise<object>} Список распределения
-   */
   async generateDistributionList(round) {
     try {
       console.log(`Генерация списка распределения для раунда ${round}`);
@@ -37,7 +26,6 @@ class Distribution {
       let validCandidates = [];
       let taskAccountDataJSON, taskStakeListJSON;
 
-      // Получаем информацию о сабмишенах и стейках
       try {
         taskAccountDataJSON = await namespaceWrapper.getTaskSubmissionInfo(round);
         taskStakeListJSON = await namespaceWrapper.getTaskState({ is_stake_list_required: true });
@@ -55,7 +43,6 @@ class Distribution {
 
       const submissions_audit_trigger = taskAccountDataJSON?.submissions_audit_trigger?.[round] || {};
 
-      // Валидация участников и создание списка
       Object.keys(submissions).forEach(candidatePublicKey => {
         const votes = submissions_audit_trigger?.[candidatePublicKey]?.votes || [];
         const validVotes = votes.reduce((acc, vote) => acc + (vote.is_valid ? 1 : -1), 0);
@@ -69,7 +56,6 @@ class Distribution {
         }
       });
 
-      // Распределение вознаграждения между валидными кандидатами
       const rewardPerNode = Math.floor(taskStakeListJSON.bounty_amount_per_round / validCandidates.length);
       validCandidates.forEach(candidate => {
         distributionList[candidate] = rewardPerNode;
@@ -83,10 +69,6 @@ class Distribution {
     }
   }
 
-  /**
-   * Аудит списка распределения для текущего раунда.
-   * @param {number} roundNumber - Номер текущего раунда
-   */
   async auditDistribution(roundNumber) {
     console.log(`Аудит списка распределения для раунда ${roundNumber}`);
     await namespaceWrapper.validateAndVoteOnDistributionList(
@@ -95,12 +77,6 @@ class Distribution {
     );
   }
 
-  /**
-   * Валидация списка распределения.
-   * @param {string} distributionListSubmitter - Публичный ключ отправителя списка распределения
-   * @param {number} round - Номер текущего раунда
-   * @returns {Promise<boolean>} Результат валидации
-   */
   async validateDistribution(distributionListSubmitter, round) {
     try {
       const rawDistributionList = await namespaceWrapper.getDistributionList(distributionListSubmitter, round);
@@ -118,12 +94,6 @@ class Distribution {
     }
   }
 
-  /**
-   * Сравнение двух объектов на идентичность.
-   * @param {object} obj1 - Первый объект
-   * @param {object} obj2 - Второй объект
-   * @returns {boolean} Результат сравнения
-   */
   shallowEqual(obj1, obj2) {
     const keys1 = Object.keys(obj1);
     const keys2 = Object.keys(obj2);

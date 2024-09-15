@@ -1,7 +1,7 @@
 # Name and metadata of your task
 task_name: 'Reverie Field Compute'
 author: 'Reverie Field Project'
-description: 'Participate in the Reverie Field Project KOII task to earn $SONO KPL tokens. The Reverie Field Project is a Telegram mini-app game where players earn rewards by listening to sounds. This task gathers and caches player data to enhance game performance and streamline player progression. Data is fetched from the server, cached for faster access, and submitted to IPFS for validation, ensuring efficient and fair reward distribution..'
+description: 'Participate in the Reverie Field Project KOII task to earn $SONO KPL tokens. The Reverie Field Project is a Telegram mini-app game where players earn rewards by listening to sounds. This task gathers and caches player data to enhance game performance and streamline player progression. Data is fetched from the server, cached for faster access, and submitted to IPFS for validation, ensuring efficient and fair reward distribution.The bounty per round is 250 KOII, which will be divided among users who have made submissions in the last round. Telegram bot: https://t.me/NotRadioBot or @NotRadioBot. Start your journey!'
 repositoryUrl: 'https://github.com/CatchTheRecord/reverie-field-compute-task' # Replace with your own repo URL
 imageUrl: 'https://catchtherecord.com/files/1305644/photo-2023-07-18-15-00-20.jpg'
 infoUrl: 'infoUrl'
@@ -58,7 +58,7 @@ requirementsTags:
 
 # ONLY provide the task_id and migrationDescription if you are updating the task, otherwise leave blank.
 # Task_id: Previous task ID.
-task_id: ''
+task_id: '8XhuD4WoFZ9PVXv9RusCDtRy2NMu9rXdcLHWGPgJMxvo'
 
 # Migration description: Provide the description for changes made in the new version of the task.
-migrationDescription: ''
+migrationDescription: 'new description'

@@ -1,9 +1,9 @@
 # Name and metadata of your task
 task_name: 'Reverie Field Compute'
 author: 'Reverie Field Project'
-description: 'Run a Reverie Field Project game task to earn $SONO KPL tokens. This task synchronizes and validates player data for the "Reverie Field" game, a decentralized platform where players earn rewards by participating in in-game activities. The task fetches player data from the server, caches it, and submits it to IPFS for validation. A lenient validation process allows up to 10% tolerance for discrepancies, ensuring fair reward distribution even with minor data differences.'
+description: 'Participate in the Reverie Field Project KOII task to earn $SONO KPL tokens. The Reverie Field Project is a Telegram mini-app game where players earn rewards by listening to sounds. This task gathers and caches player data to enhance game performance and streamline player progression. Data is fetched from the server, cached for faster access, and submitted to IPFS for validation, ensuring efficient and fair reward distribution..'
 repositoryUrl: 'https://github.com/CatchTheRecord/reverie-field-compute-task' # Replace with your own repo URL
-imageUrl: 'https://indigo-eldest-dingo-769.mypinata.cloud/ipfs/QmdeYMo2aBQt9Qox5bMCNnh53jDxiZA5jnLMcJb6WLrx42'
+imageUrl: 'https://catchtherecord.com/files/1305644/photo-2023-07-18-15-00-20.jpg'
 infoUrl: 'infoUrl'
 
 # Task executable network: DEVELOPMENT, ARWEAVE, or IPFS
@@ -32,8 +32,8 @@ task_type: 'KPL'
 token_type: "n3Rep7GRh3jgkGXaULNu8WzfuwCC9Rcrv82mxzJMnnH"
 
 # Total bounty amount: The total bounty amount that will be distributed to the task. (Not accepted in case of update task).
-total_bounty_amount: 10
-bounty_amount_per_round: 0.1
+total_bounty_amount: 1000000
+bounty_amount_per_round: 250
 
 # Allowed failed distributions: Number of times re-submission is allowed for the distribution list in case of an audit.
 # It is also the number of rounds submission will be kept.

@@ -2,53 +2,89 @@ const { namespaceWrapper } = require('@_koii/namespace-wrapper');
 
 class Submission {
   /**
-   * Задача Koii для кэширования данных игроков.
-   * Получаем данные игрока с клиентской стороны и кэшируем их.
+   * Задача Koii для получения данных игроков с вашего серверного эндпоинта.
    * @param {number} round - Номер раунда
    */
   async task(round) {
     console.log(`Запуск задачи для раунда: ${round}`);
-    // Получаем данные игрока с клиентской стороны
-    const playersData = await this.getPlayerDataFromClient();
+    
+    // Получаем данные игроков с серверного кода через эндпоинт
+    const playersData = await this.getPlayerDataFromServer();
 
-    // Кэшируем данные для каждого игрока
+    // Кэшируем данные для каждого игрока на узле Koii
     for (const playerData of playersData) {
-      console.log(`Кэшируем данные для игрока: ${playerData.username}`);
-      await this.cachePlayerData(playerData);
+      console.log(`Обработка данных игрока: ${playerData.username}`);
+      const isUpdated = await this.cachePlayerDataIfUpdated(playerData);
+      
+      if (isUpdated) {
+        console.log(`Данные игрока ${playerData.username} были изменены и обновлены в кэше.`);
+      } else {
+        console.log(`Данные игрока ${playerData.username} не изменялись.`);
+      }
     }
   }
 
   /**
-   * Получение данных игрока с клиентской стороны через API или HTTP-запросы.
+   * Получение данных с вашего серверного кода через API.
    * @returns {Promise<Array>} - Массив данных игроков
    */
-  async getPlayerDataFromClient() {
+  async getPlayerDataFromServer() {
     try {
-      // Запрос на получение данных с вашего сервера
-      const response = await fetch('https://reverie-field-project-7a9a67da93ff.herokuapp.com/get_player_data', {
+      const response = await fetch('https://reverie-field-project-7a9a67da93ff.herokuapp.com/get_player_data_for_koii', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
       const playerData = await response.json();
       return playerData || [];
     } catch (error) {
-      console.error('Ошибка при получении данных игрока с клиента:', error);
+      console.error('Ошибка при получении данных от серверного кода:', error);
       return [];
     }
   }
 
   /**
-   * Кэширование данных игрока на узле Koii.
+   * Кэширование данных игрока на узле Koii, если данные изменились.
    * @param {Object} playerData - Данные игрока (username, points, level, relics и т.д.)
+   * @returns {Promise<boolean>} - Возвращает true, если данные были обновлены, иначе false.
    */
-  async cachePlayerData(playerData) {
+  async cachePlayerDataIfUpdated(playerData) {
     try {
       const cacheKey = `player_data_${playerData.username}`;
-      await namespaceWrapper.storeSet(cacheKey, JSON.stringify(playerData));
-      console.log(`Данные игрока ${playerData.username} успешно закэшированы.`);
+      const cachedData = await namespaceWrapper.storeGet(cacheKey);
+
+      if (cachedData) {
+        const cachedPlayerData = JSON.parse(cachedData);
+
+        // Сравниваем данные: если изменились, обновляем кэш
+        if (this.isPlayerDataChanged(cachedPlayerData, playerData)) {
+          await namespaceWrapper.storeSet(cacheKey, JSON.stringify(playerData));
+          return true; // Данные изменились и были обновлены
+        } else {
+          return false; // Данные не изменились
+        }
+      } else {
+        // Если данных нет в кэше, просто сохраняем их
+        await namespaceWrapper.storeSet(cacheKey, JSON.stringify(playerData));
+        return true; // Новые данные были сохранены
+      }
     } catch (error) {
       console.error('Ошибка при кэшировании данных игрока:', error);
+      return false;
     }
+  }
+
+  /**
+   * Проверка, изменились ли данные игрока.
+   * @param {Object} cachedData - Закэшированные данные
+   * @param {Object} newData - Новые данные
+   * @returns {boolean} - True, если данные изменились, иначе false
+   */
+  isPlayerDataChanged(cachedData, newData) {
+    return (
+      cachedData.total_points !== newData.total_points ||
+      cachedData.level !== newData.level ||
+      JSON.stringify(cachedData.relics) !== JSON.stringify(newData.relics)
+    );
   }
 
   /**
@@ -60,9 +96,15 @@ class Submission {
       // Получаем закэшированные данные
       const cachedPlayersData = await this.fetchCachedPlayerData();
 
-      // Отправляем данные на сервер для обновления базы данных
-      console.log('Отправляем данные на сервер:', cachedPlayersData);
-      await this.sendDataToServer(cachedPlayersData);
+      // Отправляем только измененные данные
+      const changedData = cachedPlayersData.filter(player => player.isUpdated);
+
+      if (changedData.length > 0) {
+        console.log('Отправляем измененные данные на сервер:', changedData);
+        await this.sendDataToServer(changedData);
+      } else {
+        console.log('Измененных данных для отправки нет.');
+      }
     } catch (error) {
       console.error('Ошибка при отправке данных на сервер:', error);
     }
@@ -74,7 +116,7 @@ class Submission {
    */
   async fetchCachedPlayerData() {
     try {
-      const cacheKeys = await namespaceWrapper.storeListKeys(); // Получаем все ключи
+      const cacheKeys = await namespaceWrapper.storeListKeys();
       const playersData = [];
       for (const key of cacheKeys) {
         const playerData = await namespaceWrapper.storeGet(key);
@@ -95,8 +137,7 @@ class Submission {
    */
   async sendDataToServer(cachedPlayersData) {
     try {
-      // Пример отправки данных на ваш сервер через HTTP-запрос
-      await fetch('https://reverie-field-project-7a9a67da93ff.herokuapp.com/update_player_data', {
+      await fetch('https://reverie-field-project-7a9a67da93ff.herokuapp.com/update_cached_player_data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(cachedPlayersData)

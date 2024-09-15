@@ -1,5 +1,5 @@
 # Name and metadata of your task
-task_name: 'Reverie Field Compute Task'
+task_name: 'Reverie Field Compute'
 author: 'Reverie Field Project'
 description: 'Run this task to earn $SONO KPL tokens'
 repositoryUrl: 'https://github.com/CatchTheRecord/reverie-field-compute-task' # Replace with your own repo URL
@@ -26,10 +26,10 @@ submission_window: 600
 minimum_stake_amount: 1.9
 
 # Task Bounty Type: KOII, KPL
-task_type: 'KOII'
+task_type: 'KPL'
 
 # OPTIONAL (ONLY IF Task Type = KPL) : Token Mint Address, Fire Token as an example here. 
-token_type: "FJG2aEPtertCXoedgteCCMmgngSZo1Zd715oNBzR7xpR"
+token_type: "n3Rep7GRh3jgkGXaULNu8WzfuwCC9Rcrv82mxzJMnnH"
 
 # Total bounty amount: The total bounty amount that will be distributed to the task. (Not accepted in case of update task).
 total_bounty_amount: 10
@@ -48,11 +48,11 @@ space: 0.1
 
 requirementsTags:
   - type: CPU
-    value: '4-core'
+    value: '2-core'
   - type: RAM
-    value: '5 GB'
+    value: '1 GB'
   - type: STORAGE
-    value: '5 GB'
+    value: '1 GB'
 
 # OPTIONAL variables for creating task / REQUIRED variables for updating task
 

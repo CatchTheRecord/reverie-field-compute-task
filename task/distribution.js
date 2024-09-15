@@ -2,62 +2,62 @@ const { namespaceWrapper } = require('@_koii/namespace-wrapper');
 
 class Distribution {
   /**
-   * Генерация и отправка списка распределения для текущего раунда
-   * @param {number} round - Номер текущего раунда
+   * Generate and submit the distribution list for the current round
+   * @param {number} round - The current round number
    * @returns {void}
    */
   submitDistributionList = async (round) => {
-    console.log('Отправка списка распределения для раунда', round);
+    console.log('Submitting distribution list for round', round);
     try {
       const distributionList = await this.generateDistributionList(round);
       if (Object.keys(distributionList).length === 0) {
-        console.log('Не удалось сгенерировать список распределения');
+        console.log('Failed to generate the distribution list');
         return;
       }
 
-      // Отправляем список распределения в блокчейн через Koii
+      // Submit the distribution list to the blockchain via Koii
       const decider = await namespaceWrapper.uploadDistributionList(distributionList, round);
       if (decider) {
         const response = await namespaceWrapper.distributionListSubmissionOnChain(round);
-        console.log('Ответ после отправки списка распределения:', response);
+        console.log('Response after submitting distribution list:', response);
       }
     } catch (err) {
-      console.error('Ошибка при отправке списка распределения:', err);
+      console.error('Error submitting distribution list:', err);
     }
   };
 
   /**
-   * Генерация списка распределения для текущего раунда
-   * @param {number} round - Номер текущего раунда
-   * @returns {Promise<object>} Список распределения для данного раунда
+   * Generate the distribution list for the current round
+   * @param {number} round - The current round number
+   * @returns {Promise<object>} Distribution list for the given round
    */
   async generateDistributionList(round) {
     try {
-      console.log('Генерация списка распределения для раунда', round);
+      console.log('Generating distribution list for round', round);
       let distributionList = {};
       let validPlayers = [];
 
-      // Получаем данные сабмишенов для текущего раунда
+      // Fetch submission data for the current round
       let taskAccountDataJSON = await namespaceWrapper.getTaskSubmissionInfo(round);
       if (!taskAccountDataJSON) {
-        console.error('Ошибка при получении данных сабмишенов');
+        console.error('Error fetching submission data');
         return distributionList;
       }
 
       const submissions = taskAccountDataJSON.submissions[round];
       if (!submissions) {
-        console.log(`Нет сабмишенов для раунда ${round}`);
+        console.log(`No submissions for round ${round}`);
         return distributionList;
       }
 
       const submissionKeys = Object.keys(submissions);
       const taskStakeListJSON = await namespaceWrapper.getTaskState({ is_stake_list_required: true });
       if (!taskStakeListJSON) {
-        console.error('Ошибка при получении списка стейков');
+        console.error('Error fetching stake list');
         return distributionList;
       }
 
-      // Обработка сабмишенов и расчёт наград или штрафов
+      // Process submissions and calculate rewards or penalties
       for (const playerPublicKey of submissionKeys) {
         const playerSubmission = submissions[playerPublicKey];
         const isValidSubmission = this.checkIfSubmissionHasChanges(playerSubmission);
@@ -65,84 +65,84 @@ class Distribution {
         if (isValidSubmission) {
           validPlayers.push(playerPublicKey);
         } else {
-          // Если сабмишен недействителен, снижаем стейк игрока
+          // If the submission is invalid, reduce the player's stake
           const playerStake = taskStakeListJSON.stake_list[playerPublicKey];
           const slashedStake = playerStake * 0.7;
           distributionList[playerPublicKey] = -slashedStake;
-          console.log('Штраф для игрока:', playerPublicKey, slashedStake);
+          console.log('Penalty for player:', playerPublicKey, slashedStake);
         }
       }
 
-      // Распределение наград среди игроков с валидными сабмишенами
+      // Distribute rewards among players with valid submissions
       const reward = Math.floor(taskStakeListJSON.bounty_amount_per_round / validPlayers.length);
       for (const validPlayer of validPlayers) {
         distributionList[validPlayer] = reward;
       }
 
-      console.log('Итоговый список распределения:', distributionList);
+      console.log('Final distribution list:', distributionList);
       return distributionList;
     } catch (err) {
-      console.error('Ошибка при генерации списка распределения:', err);
+      console.error('Error generating distribution list:', err);
       return {};
     }
   }
 
   /**
-   * Проверка, содержит ли сабмишен какие-либо изменения данных об игроках
-   * @param {object} submission - Сабмишен игрока
-   * @returns {boolean} Результат проверки на наличие изменений
+   * Check if a submission contains any changes in player data
+   * @param {object} submission - Player's submission
+   * @returns {boolean} Result of the check for data changes
    */
   checkIfSubmissionHasChanges(submission) {
-    // Упрощенная проверка: если в сабмишене есть любые данные, считаем, что он валиден
+    // Simplified check: if there is any data in the submission, it's considered valid
     return submission && Object.keys(submission).length > 0;
   }
 
   /**
-   * Аудит списка распределения для текущего раунда
-   * @param {number} roundNumber - Номер текущего раунда
+   * Audit the distribution list for the current round
+   * @param {number} roundNumber - The current round number
    * @returns {void}
    */
   async auditDistribution(roundNumber) {
-    console.log('Аудит списка распределения для раунда:', roundNumber);
+    console.log('Auditing distribution list for round:', roundNumber);
     await namespaceWrapper.validateAndVoteOnDistributionList(this.validateDistribution, roundNumber);
   }
 
   /**
-   * Валидация списка распределения, присланного другим узлом
-   * @param {string} distributionListSubmitter - Публичный ключ отправителя списка распределения
-   * @param {number} round - Номер раунда
-   * @returns {Promise<boolean>} Результат валидации (true, если список корректен)
+   * Validate the distribution list submitted by another node
+   * @param {string} distributionListSubmitter - Public key of the submitter of the distribution list
+   * @param {number} round - The round number
+   * @returns {Promise<boolean>} Result of the validation (true if the list is valid)
    */
   validateDistribution = async (distributionListSubmitter, round) => {
     try {
       const rawDistributionList = await namespaceWrapper.getDistributionList(distributionListSubmitter, round);
       if (!rawDistributionList) {
-        console.log(`Список распределения не найден для раунда ${round}`);
+        console.log(`Distribution list not found for round ${round}`);
         return true;
       }
 
       const fetchedDistributionList = JSON.parse(rawDistributionList);
       const generatedDistributionList = await this.generateDistributionList(round);
 
-      // Сравниваем списки распределения
+      // Compare the distribution lists
       const isValid = this.shallowEqual(fetchedDistributionList, generatedDistributionList);
       if (isValid) {
-        console.log('Список распределения успешно прошел валидацию.');
+        console.log('Distribution list successfully validated.');
       } else {
-        console.error('Ошибка: список распределения не прошел проверку.');
+        console.error('Error: Distribution list failed validation.');
       }
       return isValid;
     } catch (error) {
-      console.error('Ошибка при валидации списка распределения:', error);
+      console.error('Error validating distribution list:', error);
       return false;
     }
   };
 
   /**
-   * Сравнение двух объектов на равенство
-   * @param {object} obj1 - Первый объект
-   * @param {object} obj2 - Второй объект
-   * @returns {boolean} Результат сравнения
+   * Compare two objects for equality
+   * @param {object} obj1 - First object
+   * @param {object} obj2 - Second object
+   * @returns {boolean} Result of the comparison
    */
   shallowEqual(obj1, obj2) {
     const keys1 = Object.keys(obj1);

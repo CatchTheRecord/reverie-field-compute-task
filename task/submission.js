@@ -24,16 +24,21 @@ class Submission {
       return;
     }
 
+    let playersWithChanges = 0; // Counter for changed player data
+
     // Cache data for each player on the Koii node
     for (const playerData of playersData) {
-      console.log(`Processing player data: ${playerData.username}`);
       const isUpdated = await this.cachePlayerDataIfUpdated(playerData);
 
       if (isUpdated) {
         console.log(`Player data for ${playerData.username} has been modified and updated in the cache.`);
-      } else {
-        console.log(`Player data for ${playerData.username} remains unchanged.`);
+        playersWithChanges++; // Increment if the data was updated
       }
+    }
+
+    // If no player data was changed, log that unchanged data was processed
+    if (playersWithChanges === 0) {
+      console.log("All player data remains unchanged. Unchanged player data has been processed.");
     }
   }
 

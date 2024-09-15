@@ -1,5 +1,8 @@
 const { namespaceWrapper } = require('@_koii/namespace-wrapper');
 const { KoiiStorageClient } = require('@_koii/storage-task-sdk'); // Импорт KoiiStorageClient
+const path = require('path');
+const os = require('os');
+const fs = require('fs');
 
 class Submission {
   constructor() {
@@ -159,8 +162,9 @@ class Submission {
    */
   async uploadToIPFS(data, userStaking) {
     try {
-      const filePath = './cachedPlayersData.json'; // Локальный путь для временного файла
-      const fs = require('fs');
+      const tempDir = os.tmpdir(); // Используем временную директорию
+      const filePath = path.join(tempDir, 'cachedPlayersData.json'); // Путь к временному файлу
+
       fs.writeFileSync(filePath, JSON.stringify(data)); // Сохраняем данные временно
 
       // Используем KoiiStorageClient для загрузки файла

@@ -50,7 +50,7 @@ class Audit {
    */
   async getDataFromIPFS(cid) {
     try {
-      const fileName = 'submittedData.json'; // Имя файла для извлечения
+      const fileName = 'submittedData.json'; // Имя файла для извлечения данных из IPFS
       const blob = await this.client.getFile(cid, fileName);
       const text = await blob.text();
       const data = JSON.parse(text); // Преобразуем текстовые данные в JSON

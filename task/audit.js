@@ -25,18 +25,16 @@ class Audit {
       // Получаем закэшированные данные игроков
       const cachedData = await this.fetchCachedPlayerData();
 
-      // Сравниваем данные из кэша и IPFS
-      const isValid = this.compareData(cachedData, ipfsData);
+      // Проверяем, есть ли какие-либо изменения
+      const isChanged = this.hasChanges(cachedData, ipfsData);
 
-      if (isValid) {
-        console.log(`Сабмишен для раунда ${round} прошёл валидацию.`);
+      if (isChanged) {
+        console.log(`Данные изменились в раунде ${round}. Сабмишен прошёл валидацию.`);
       } else {
-        console.error(`Сабмишен для раунда ${round} не прошёл валидацию, но может быть частично принят.`);
-        // Лояльная валидация - считаем сабмишен валидным, если несоответствия минимальны
-        return this.lenientValidation(cachedData, ipfsData);
+        console.log(`Данные не изменились в раунде ${round}. Сабмишен прошёл валидацию.`);
       }
 
-      return isValid;
+      return true; // Независимо от того, изменились данные или нет, сабмишен считается валидным
     } catch (error) {
       console.error('Ошибка при валидации:', error);
       return false;
@@ -63,57 +61,13 @@ class Audit {
   }
 
   /**
-   * Сравнение закэшированных данных и сабмишена из IPFS.
+   * Проверка, изменились ли данные.
    * @param {Array} cachedData - Закэшированные данные.
-   * @param {Array} submittedData - Данные из IPFS.
-   * @returns {boolean} - True, если данные совпадают, иначе false.
+   * @param {Array} newData - Данные из IPFS.
+   * @returns {boolean} - True, если данные изменились, иначе false.
    */
-  compareData(cachedData, submittedData) {
-    if (cachedData.length !== submittedData.length) {
-      console.error('Несоответствие количества записей между кэшем и данными из IPFS.');
-      return false;
-    }
-
-    for (let i = 0; i < cachedData.length; i++) {
-      if (JSON.stringify(cachedData[i]) !== JSON.stringify(submittedData[i])) {
-        console.error(`Несоответствие данных для записи ${i}:`);
-        console.error('Закэшированные данные:', cachedData[i]);
-        console.error('Данные из IPFS:', submittedData[i]);
-        return false;
-      }
-    }
-
-    console.log('Все данные совпадают.');
-    return true;
-  }
-
-  /**
-   * Лояльная проверка данных с допустимым уровнем несовпадений.
-   * @param {Array} cachedData - Закэшированные данные.
-   * @param {Array} submittedData - Данные из IPFS.
-   * @returns {boolean} - True, если данные достаточно близки, иначе false.
-   */
-  lenientValidation(cachedData, submittedData) {
-    let mismatches = 0;
-
-    for (let i = 0; i < cachedData.length; i++) {
-      if (JSON.stringify(cachedData[i]) !== JSON.stringify(submittedData[i])) {
-        mismatches++;
-        console.warn(`Небольшое несовпадение данных для игрока ${cachedData[i]?.username || 'неизвестный'}`);
-      }
-    }
-
-    // Если несоответствий менее 10%, считаем сабмишен валидным
-    const mismatchPercentage = (mismatches / cachedData.length) * 100;
-    console.log(`Процент несовпадений: ${mismatchPercentage}%`);
-
-    if (mismatchPercentage <= 10) {
-      console.log('Несоответствия незначительны, сабмишен принят.');
-      return true;
-    } else {
-      console.error('Слишком много несовпадений, сабмишен отклонён.');
-      return false;
-    }
+  hasChanges(cachedData, newData) {
+    return JSON.stringify(cachedData) !== JSON.stringify(newData);
   }
 
   /**

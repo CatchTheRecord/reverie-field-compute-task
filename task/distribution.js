@@ -75,8 +75,11 @@ class Distribution {
 
       // Distribute rewards among players with valid submissions
       const reward = Math.floor(taskStakeListJSON.bounty_amount_per_round / validPlayers.length);
+      const maxReward = 25; // Maximum reward per player is 25
+
       for (const validPlayer of validPlayers) {
-        distributionList[validPlayer] = reward;
+        distributionList[validPlayer] = Math.min(reward, maxReward);
+        console.log(`Reward for player ${validPlayer}: ${distributionList[validPlayer]} (capped at ${maxReward})`);
       }
 
       console.log('Final distribution list:', distributionList);

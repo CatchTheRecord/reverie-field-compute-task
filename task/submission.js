@@ -174,17 +174,17 @@ class Submission {
 
     while (retries > 0) {
       try {
+        console.log(`Uploading data to IPFS. Retries left: ${retries}`);
         const fileUploadResponse = await this.client.uploadFile(filePath, userStaking);
         return fileUploadResponse.cid; // Return CID
       } catch (error) {
-        if (retries > 1 && error.message.includes('503')) {
-          console.log('Error uploading data to IPFS, retrying in 5 seconds...');
-          retries--;
-          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds
-        } else {
-          console.error('Error uploading data to IPFS:', error);
+        retries--;
+        console.log('Temporary failure, retrying...');
+        if (retries === 0) {
+          console.error('Failed to upload data to IPFS after multiple attempts:', error);
           throw error;
         }
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds
       }
     }
   }

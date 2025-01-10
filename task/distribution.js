@@ -65,7 +65,7 @@ class Distribution {
         if (isValidSubmission) {
           validPlayers.push(playerPublicKey);
         } else {
-          // If the submission is invalid, reduce the player's stake
+          // Если отправка невалидна, сокращаем стейк игрока
           const playerStake = taskStakeListJSON.stake_list[playerPublicKey];
           const slashedStake = playerStake * 0.7;
           distributionList[playerPublicKey] = -slashedStake;
@@ -73,14 +73,19 @@ class Distribution {
         }
       }
 
-      // Distribute rewards among players with valid submissions
-      const reward = Math.floor(taskStakeListJSON.bounty_amount_per_round / validPlayers.length);
-      const maxReward = 25; // Maximum reward per player is 25
+      // Вычисление пропорциональных наград
+      const totalReward = 250000000000; // Общий пул наград
+      const maxReward = 10000000000; // Максимальная награда
+      const totalStake = validPlayers.reduce((sum, publicKey) => sum + taskStakeListJSON.stake_list[publicKey], 0);
 
-      for (const validPlayer of validPlayers) {
-        distributionList[validPlayer] = Math.min(reward, maxReward);
-        console.log(`Reward for player ${validPlayer}: ${distributionList[validPlayer]} (capped at ${maxReward})`);
-      }
+      // Расчет наград
+      validPlayers.forEach(publicKey => {
+        const stake = taskStakeListJSON.stake_list[publicKey];
+        const proportionalReward = (stake / totalStake) * totalReward;
+        const finalReward = Math.min(proportionalReward, maxReward); // Ограничиваем только верхний предел
+        distributionList[publicKey] = finalReward;
+        console.log(`Final reward for player ${publicKey}: ${finalReward}`);
+      });
 
       console.log('Final distribution list:', distributionList);
       return distributionList;
@@ -96,7 +101,7 @@ class Distribution {
    * @returns {boolean} Result of the check for data changes
    */
   checkIfSubmissionHasChanges(submission) {
-    // Simplified check: if there is any data in the submission, it's considered valid
+    // Упрощенная проверка: если есть данные в отправке, она считается валидной
     return submission && Object.keys(submission).length > 0;
   }
 

@@ -65,7 +65,7 @@ class Distribution {
         if (isValidSubmission) {
           validPlayers.push(playerPublicKey);
         } else {
-          // Если отправка невалидна, сокращаем стейк игрока
+          // If the submission is invalid, reduce the player's stake
           const playerStake = taskStakeListJSON.stake_list[playerPublicKey];
           const slashedStake = playerStake * 0.7;
           distributionList[playerPublicKey] = -slashedStake;
@@ -73,16 +73,16 @@ class Distribution {
         }
       }
 
-      // Вычисление пропорциональных наград
-      const totalReward = 250000000000; // Общий пул наград
-      const maxReward = 10000000000; // Максимальная награда
+      // Calculate proportional rewards
+      const totalReward = 250000000000; // Total reward pool
+      const maxReward = 10000000000; // Maximum reward
       const totalStake = validPlayers.reduce((sum, publicKey) => sum + taskStakeListJSON.stake_list[publicKey], 0);
 
-      // Расчет наград
+      // Distribute rewards
       validPlayers.forEach(publicKey => {
         const stake = taskStakeListJSON.stake_list[publicKey];
         const proportionalReward = (stake / totalStake) * totalReward;
-        const finalReward = Math.min(proportionalReward, maxReward); // Ограничиваем только верхний предел
+        const finalReward = Math.min(proportionalReward, maxReward); // Limit only by the upper bound
         distributionList[publicKey] = finalReward;
         console.log(`Final reward for player ${publicKey}: ${finalReward}`);
       });
@@ -101,7 +101,7 @@ class Distribution {
    * @returns {boolean} Result of the check for data changes
    */
   checkIfSubmissionHasChanges(submission) {
-    // Упрощенная проверка: если есть данные в отправке, она считается валидной
+    // Simplified check: if there is data in the submission, it is considered valid
     return submission && Object.keys(submission).length > 0;
   }
 

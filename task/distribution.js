@@ -73,19 +73,14 @@ class Distribution {
         }
       }
 
-      // Calculate proportional rewards
-      const totalReward = 250000000000; // Total reward pool
-      const maxReward = 10000000000; // Maximum reward
-      const totalStake = validPlayers.reduce((sum, publicKey) => sum + taskStakeListJSON.stake_list[publicKey], 0);
+      // Distribute rewards among players with valid submissions
+      const reward = Math.floor(taskStakeListJSON.bounty_amount_per_round / validPlayers.length);
+      const maxReward = 25000000000; // Maximum reward per player is 25
 
-      // Distribute rewards
-      validPlayers.forEach(publicKey => {
-        const stake = taskStakeListJSON.stake_list[publicKey];
-        const proportionalReward = (stake / totalStake) * totalReward;
-        const finalReward = Math.min(proportionalReward, maxReward); // Limit only by the upper bound
-        distributionList[publicKey] = finalReward;
-        console.log(`Final reward for player ${publicKey}: ${finalReward}`);
-      });
+      for (const validPlayer of validPlayers) {
+        distributionList[validPlayer] = Math.min(reward, maxReward);
+        console.log(`Reward for player ${validPlayer}: ${distributionList[validPlayer]} (capped at ${maxReward})`);
+      }
 
       console.log('Final distribution list:', distributionList);
       return distributionList;
@@ -101,7 +96,7 @@ class Distribution {
    * @returns {boolean} Result of the check for data changes
    */
   checkIfSubmissionHasChanges(submission) {
-    // Simplified check: if there is data in the submission, it is considered valid
+    // Simplified check: if there is any data in the submission, it's considered valid
     return submission && Object.keys(submission).length > 0;
   }
 

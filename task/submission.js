@@ -169,25 +169,26 @@ class Submission {
   async uploadToIPFS(data, userStaking, retries = 3) {
     const tempDir = os.tmpdir(); // Use temporary directory
     const filePath = path.join(tempDir, 'cachedPlayersData.json'); // Path to temporary file
-
+  
     fs.writeFileSync(filePath, JSON.stringify(data)); // Temporarily save data
-
+  
     while (retries > 0) {
       try {
-        console.log(`Uploading data to IPFS. Retries left: ${retries}`);
         const fileUploadResponse = await this.client.uploadFile(filePath, userStaking);
         return fileUploadResponse.cid; // Return CID
       } catch (error) {
-        retries--;
-        console.log('Temporary failure, retrying...');
-        if (retries === 0) {
-          console.error('Failed to upload data to IPFS after multiple attempts:', error);
-          throw error;
+        retries--; // Decrease retries first
+        if (retries > 0 && error.message.includes('503')) {
+          console.log(`Error uploading data to IPFS. Retries left: ${retries}. Retrying in 5 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds
+        } else {
+          console.error('Failed to upload data to IPFS:', error);
+          throw error; // Throw the error if no retries left or not a 503 error
         }
-        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds
       }
     }
   }
+  
 
   /**
    * Retrieve all cached player data.

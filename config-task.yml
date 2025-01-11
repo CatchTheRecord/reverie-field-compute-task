@@ -1,7 +1,7 @@
 # Name and metadata of your task
 task_name: 'Reverie Field Compute'
 author: 'Reverie Field Project'
-description: 'Participate in the Reverie Field Project KOII Task to earn $SONO KPL tokens! The Reverie Field Project is a Telegram mini-app game where players earn rewards by listening to unique sounds. This task gathers and caches player data to enhance game performance and streamline player progression. Data is fetched from the server, cached for faster access, and submitted to IPFS for validation, ensuring efficient and fair reward distribution. Dynamic Rewards System:The bounty per round is 250 $SONO, divided among users who made submissions in the last round. Rewards are distributed dynamically based on the users stake, ensuring fairness. The higher your stake, the greater your reward! However, there is no minimum reward cap, so every valid submission receives a reward proportional to the players stake. The maximum reward per player is capped at 10 $SONO to ensure broad distribution among participants. Join now and start earning! Telegram bot: https://t.me/NotRadioBot or @NotRadioBot. Start your journey and become part of the Reverie Field community today!'
+description: 'Participate in the Reverie Field Project KOII task to earn $SONO KPL tokens. The Reverie Field Project is a Telegram mini-app game where players earn rewards by listening to sounds. This task gathers and caches player data to enhance game performance and streamline player progression. Data is fetched from the server, cached for faster access, and submitted to IPFS for validation, ensuring efficient and fair reward distribution.The bounty per round is 250 $SONO, which will be divided among users who have made submissions in the last round. Telegram bot: https://t.me/NotRadioBot or @NotRadioBot. Start your journey!'
 repositoryUrl: 'https://github.com/CatchTheRecord/reverie-field-compute-task' # Replace with your own repo URL
 imageUrl: 'https://catchtherecord.com/files/1305644/photo-2023-07-18-15-00-20.jpg'
 infoUrl: 'https://www.koii.network/ocean'
@@ -56,14 +56,14 @@ requirementsTags:
 
 ## Tags ##
 # See https://www.koii.network/docs/develop/command-line-tool/create-task-cli/create-task#tags for available tag options.
-tags: ["web3gaming", "sound", "streaming", "games"]
+tags: ["web3gaming", "sound", "streaming", "compute"]
 
 # OPTIONAL variables for creating task / REQUIRED variables for updating task
 environment: "PRODUCTION"
 
 # ONLY provide the task_id and migrationDescription if you are updating the task, otherwise leave blank.
 # Task_id: Previous task ID.
-task_id: '31rFtuWUL9YXKHidU7vZdBS2c5MmnTaZx5KVS4qDdrDh'
+task_id: 'HDw8TUbzL3uLqGJh87UjP7J9BHxEgx232R7uowm5QXDz'
 
 # Migration description: Provide the description for changes made in the new version of the task.
-migrationDescription: 'new distribution, more task space'
+migrationDescription: 'new distribution, no dynamic rewards'

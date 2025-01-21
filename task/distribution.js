@@ -36,6 +36,7 @@ class Distribution {
       console.log('Generating distribution list for round', round);
       let distributionList = {};
       let validPlayers = [];
+      let totalStake = 0;
 
       // Fetch submission data for the current round
       let taskAccountDataJSON = await namespaceWrapper.getTaskSubmissionInfo(round);
@@ -57,13 +58,14 @@ class Distribution {
         return distributionList;
       }
 
-      // Process submissions and calculate rewards or penalties
+      // Process submissions and calculate total stake
       for (const playerPublicKey of submissionKeys) {
         const playerSubmission = submissions[playerPublicKey];
         const isValidSubmission = this.checkIfSubmissionHasChanges(playerSubmission);
 
         if (isValidSubmission) {
           validPlayers.push(playerPublicKey);
+          totalStake += taskStakeListJSON.stake_list[playerPublicKey] || 0; // Sum total stake
         } else {
           // If the submission is invalid, reduce the player's stake
           const playerStake = taskStakeListJSON.stake_list[playerPublicKey];
@@ -73,13 +75,30 @@ class Distribution {
         }
       }
 
-      // Distribute rewards among players with valid submissions
-      const reward = Math.floor(taskStakeListJSON.bounty_amount_per_round / validPlayers.length);
-      const maxReward = 25000000000; // Maximum reward per player is 25
+      if (validPlayers.length === 0 || totalStake === 0) {
+        console.log('No valid players or total stake is zero.');
+        return distributionList;
+      }
 
+      console.log('Total stake of valid players:', totalStake);
+
+      // 60% of the pool is distributed proportionally based on stake
+      const proportionalPool = totalStake * 0.6;
+
+      // 40% of the pool is distributed equally among valid players
+      const equalPool = totalStake * 0.4;
+      const equalReward = Math.floor(equalPool / validPlayers.length);
+
+      // Distribute rewards
       for (const validPlayer of validPlayers) {
-        distributionList[validPlayer] = Math.min(reward, maxReward);
-        console.log(`Reward for player ${validPlayer}: ${distributionList[validPlayer]} (capped at ${maxReward})`);
+        const playerStake = taskStakeListJSON.stake_list[validPlayer] || 0;
+        const proportionalReward = Math.floor((playerStake / totalStake) * proportionalPool);
+
+        // Combine equal and proportional rewards
+        distributionList[validPlayer] = equalReward + proportionalReward;
+        console.log(
+          `Player ${validPlayer}: Equal reward = ${equalReward}, Proportional reward = ${proportionalReward}, Total = ${distributionList[validPlayer]}`
+        );
       }
 
       console.log('Final distribution list:', distributionList);

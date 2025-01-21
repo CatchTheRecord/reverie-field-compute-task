@@ -145,9 +145,22 @@ class Submission {
         return;
       }
 
+      // Add unique identifier to submission
+      const submissionData = {
+        round,
+        timestamp: Date.now(),
+        cachedPlayersData,
+      };
+
+      // Check if submission string length exceeds 512 bytes
+      const submissionString = JSON.stringify(submissionData);
+      if (Buffer.byteLength(submissionString, 'utf8') > 512) {
+        throw new Error('Submission string exceeds 512 bytes. Please reduce data size.');
+      }
+
       // Upload data to IPFS via KoiiStorageClient
       const userStaking = await namespaceWrapper.getSubmitterAccount();
-      const ipfsCid = await this.uploadToIPFS(cachedPlayersData, userStaking);
+      const ipfsCid = await this.uploadToIPFS(submissionData, userStaking);
       console.log('Data uploaded to IPFS, CID:', ipfsCid);
 
       // Submit CID to the server for verification
@@ -168,10 +181,10 @@ class Submission {
    */
   async uploadToIPFS(data, userStaking, retries = 3) {
     const tempDir = os.tmpdir(); // Use temporary directory
-    const filePath = path.join(tempDir, 'cachedPlayersData.json'); // Path to temporary file
-  
+    const filePath = path.join(tempDir, `submission_${userStaking.publicKey}_${Date.now()}.json`); // Unique file path
+
     fs.writeFileSync(filePath, JSON.stringify(data)); // Temporarily save data
-  
+
     while (retries > 0) {
       try {
         const fileUploadResponse = await this.client.uploadFile(filePath, userStaking);
@@ -188,7 +201,6 @@ class Submission {
       }
     }
   }
-  
 
   /**
    * Retrieve all cached player data.

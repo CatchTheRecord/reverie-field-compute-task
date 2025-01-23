@@ -1,22 +1,21 @@
 const { namespaceWrapper } = require('@_koii/namespace-wrapper');
-const { KoiiStorageClient } = require('@_koii/storage-task-sdk'); // Import KoiiStorageClient
+const { KoiiStorageClient } = require('@_koii/storage-task-sdk');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
 class Submission {
   constructor() {
-    this.client = new KoiiStorageClient(); // Initialize KoiiStorageClient
+    this.client = new KoiiStorageClient();
   }
 
   /**
-   * Koii task for fetching player data from your server's endpoint.
-   * @param {number} round - Round number
+   * Выполнение задачи.
+   * @param {number} round - Номер раунда.
    */
   async task(round) {
     console.log(`Task started for round: ${round}`);
 
-    // Fetch player data from your server endpoint
     const playersData = await this.getPlayerDataFromServer();
 
     if (!playersData || playersData.length === 0) {
@@ -24,52 +23,47 @@ class Submission {
       return;
     }
 
-    let playersWithChanges = 0; // Counter for changed player data
+    let playersWithChanges = 0;
 
-    // Cache data for each player on the Koii node
     for (const playerData of playersData) {
       const isUpdated = await this.cachePlayerDataIfUpdated(playerData);
 
       if (isUpdated) {
-        console.log(`Player data for ${playerData.username} has been modified and updated in the cache.`);
-        playersWithChanges++; // Increment if the data was updated
+        console.log('Data has changed and updated in the cache.');
+        playersWithChanges++;
       }
     }
 
-    // If no player data was changed, log that unchanged data was processed
     if (playersWithChanges === 0) {
-      console.log("All player data remains unchanged. Unchanged player data has been processed.");
+      console.log('All player data remains unchanged.');
     }
   }
 
   /**
-   * Fetch player data from your server API.
-   * @returns {Promise<Array>} - Array of player data
+   * Получение данных игроков с сервера.
+   * @returns {Promise<Array>} - Данные игроков.
    */
   async getPlayerDataFromServer() {
     try {
-      const response = await fetch('https://reverie-field-project-7a9a67da93ff.herokuapp.com/get_player_data_for_koii', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
+      const response = await fetch(
+        'https://reverie-field-project-7a9a67da93ff.herokuapp.com/get_player_data_for_koii',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
 
-      if (!response.ok) {
-        console.error('Server response error:', response.statusText);
-        return [];
-      }
-
-      const playerData = await response.json();
-      return playerData || [];
-    } catch (error) {
-      console.error('Error fetching data from the server:', error);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch {
       return [];
     }
   }
 
   /**
-   * Cache player data on the Koii node if the data has changed.
-   * @param {Object} playerData - Player data (username, points, level, relics, etc.)
-   * @returns {Promise<boolean>} - Returns true if the data was updated, otherwise false.
+   * Кэширование данных игрока.
+   * @param {Object} playerData - Данные игрока.
+   * @returns {Promise<boolean>} - Изменились ли данные.
    */
   async cachePlayerDataIfUpdated(playerData) {
     try {
@@ -79,29 +73,25 @@ class Submission {
       if (cachedData) {
         const cachedPlayerData = JSON.parse(cachedData);
 
-        // Compare data: if changed, update the cache
         if (this.isPlayerDataChanged(cachedPlayerData, playerData)) {
           await namespaceWrapper.storeSet(cacheKey, JSON.stringify(playerData));
           await this.addKeyToCacheList(cacheKey);
-          return true; // Data changed and was updated
-        } else {
-          return false; // Data remained the same
+          return true;
         }
+        return false;
       } else {
-        // If no data is cached, store it
         await namespaceWrapper.storeSet(cacheKey, JSON.stringify(playerData));
         await this.addKeyToCacheList(cacheKey);
-        return true; // New data was saved
+        return true;
       }
-    } catch (error) {
-      console.error('Error caching player data:', error);
+    } catch {
       return false;
     }
   }
 
   /**
-   * Add a key to the list of cached data if it's not already present.
-   * @param {string} key - Cache key.
+   * Добавление ключа в список кэша.
+   * @param {string} key - Ключ.
    */
   async addKeyToCacheList(key) {
     try {
@@ -112,32 +102,31 @@ class Submission {
         cacheKeys.push(key);
         await namespaceWrapper.storeSet('cacheKeys', JSON.stringify(cacheKeys));
       }
-    } catch (error) {
-      console.error('Error adding key to cache list:', error);
+    } catch {
+      // Ошибки здесь не критичны, пропускаем их
     }
   }
 
   /**
-   * Check if player data has changed.
-   * @param {Object} cachedData - Cached data
-   * @param {Object} newData - New data
-   * @returns {boolean} - True if data changed, otherwise false
+   * Проверка, изменились ли данные игрока.
+   * @param {Object} cachedData - Закэшированные данные.
+   * @param {Object} newData - Новые данные.
+   * @returns {boolean} - Результат проверки.
    */
   isPlayerDataChanged(cachedData, newData) {
     return (
       cachedData.total_points !== newData.total_points ||
       cachedData.level !== newData.level ||
-      JSON.stringify(cachedData.relics) !== JSON.stringify(newData.relics)
+      JSON.stringify(cachedData.relics || []) !== JSON.stringify(newData.relics || [])
     );
   }
 
   /**
-   * Submit data to IPFS and send it to the server for verification.
-   * @param {number} round - Round number
+   * Отправка данных на сервер.
+   * @param {number} round - Номер раунда.
    */
   async submitTask(round) {
     try {
-      // Retrieve cached player data
       const cachedPlayersData = await this.fetchCachedPlayerData();
 
       if (cachedPlayersData.length === 0) {
@@ -145,66 +134,54 @@ class Submission {
         return;
       }
 
-      // Add unique identifier to submission
       const submissionData = {
         round,
         timestamp: Date.now(),
         cachedPlayersData,
       };
 
-      // Check if submission string length exceeds 512 bytes
-      const submissionString = JSON.stringify(submissionData);
-      if (Buffer.byteLength(submissionString, 'utf8') > 512) {
-        throw new Error('Submission string exceeds 512 bytes. Please reduce data size.');
-      }
-
-      // Upload data to IPFS via KoiiStorageClient
       const userStaking = await namespaceWrapper.getSubmitterAccount();
       const ipfsCid = await this.uploadToIPFS(submissionData, userStaking);
       console.log('Data uploaded to IPFS, CID:', ipfsCid);
 
-      // Submit CID to the server for verification
-      await namespaceWrapper.checkSubmissionAndUpdateRound(ipfsCid, round);
-      console.log('Submission completed with CID:', ipfsCid);
-
-    } catch (error) {
-      console.error('Error submitting data to the server:', error);
+      if (Buffer.byteLength(ipfsCid, 'utf8') <= 512) {
+        await namespaceWrapper.checkSubmissionAndUpdateRound(ipfsCid, round);
+        console.log('Submission completed with CID:', ipfsCid);
+      }
+    } catch {
+      // Ошибки здесь не критичны, пропускаем их
     }
   }
 
   /**
-   * Upload data to IPFS via KoiiStorageClient with retry attempts on failure.
-   * @param {Array} data - Data to upload to IPFS
-   * @param {Object} userStaking - User staking information
-   * @param {number} retries - Number of retry attempts in case of failure (default is 3)
-   * @returns {Promise<string>} - CID of uploaded data
+   * Загрузка данных в IPFS.
+   * @param {Array} data - Данные для загрузки.
+   * @param {Object} userStaking - Информация об аккаунте.
+   * @param {number} retries - Число попыток.
+   * @returns {Promise<string>} - CID данных.
    */
   async uploadToIPFS(data, userStaking, retries = 3) {
-    const tempDir = os.tmpdir(); // Use temporary directory
-    const filePath = path.join(tempDir, `submission_${userStaking.publicKey}_${Date.now()}.json`); // Unique file path
+    const tempDir = os.tmpdir();
+    const filePath = path.join(tempDir, `submission_${userStaking.publicKey}_${Date.now()}.json`);
 
-    fs.writeFileSync(filePath, JSON.stringify(data)); // Temporarily save data
+    fs.writeFileSync(filePath, JSON.stringify(data));
 
     while (retries > 0) {
       try {
         const fileUploadResponse = await this.client.uploadFile(filePath, userStaking);
-        return fileUploadResponse.cid; // Return CID
-      } catch (error) {
-        retries--; // Decrease retries first
-        if (retries > 0 && error.message.includes('503')) {
-          console.log(`Error uploading data to IPFS. Retries left: ${retries}. Retrying in 5 seconds...`);
-          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds
-        } else {
-          console.error('Failed to upload data to IPFS:', error);
-          throw error; // Throw the error if no retries left or not a 503 error
+        return fileUploadResponse.cid;
+      } catch {
+        retries--;
+        if (retries > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 5000));
         }
       }
     }
   }
 
   /**
-   * Retrieve all cached player data.
-   * @returns {Promise<Array>} - Array of cached player data
+   * Получение данных всех игроков из кэша.
+   * @returns {Promise<Array>} - Данные игроков.
    */
   async fetchCachedPlayerData() {
     try {
@@ -220,8 +197,7 @@ class Submission {
       }
 
       return playersData;
-    } catch (error) {
-      console.error('Error fetching cached data:', error);
+    } catch {
       return [];
     }
   }

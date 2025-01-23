@@ -11,7 +11,7 @@ class Distribution {
     try {
       const distributionList = await this.generateDistributionList(round);
       if (Object.keys(distributionList).length === 0) {
-        console.log('Failed to generate the distribution list');
+        console.error('Failed to generate the distribution list: it is empty.');
         return;
       }
 
@@ -20,6 +20,8 @@ class Distribution {
       if (decider) {
         const response = await namespaceWrapper.distributionListSubmissionOnChain(round);
         console.log('Response after submitting distribution list:', response);
+      } else {
+        console.error('Failed to upload distribution list for round:', round);
       }
     } catch (err) {
       console.error('Error submitting distribution list:', err);
@@ -38,23 +40,26 @@ class Distribution {
       let validPlayers = [];
       let totalStake = 0;
 
+      // Fixed reward pool for the current round
+      const rewardPool = 250; // Adjust as necessary
+
       // Fetch submission data for the current round
-      let taskAccountDataJSON = await namespaceWrapper.getTaskSubmissionInfo(round);
-      if (!taskAccountDataJSON) {
-        console.error('Error fetching submission data');
+      const taskAccountDataJSON = await namespaceWrapper.getTaskSubmissionInfo(round);
+      if (!taskAccountDataJSON || !taskAccountDataJSON.submissions) {
+        console.error('Error fetching submission data or submissions are missing.');
         return distributionList;
       }
 
       const submissions = taskAccountDataJSON.submissions[round];
       if (!submissions) {
-        console.log(`No submissions for round ${round}`);
+        console.log(`No submissions found for round ${round}`);
         return distributionList;
       }
 
       const submissionKeys = Object.keys(submissions);
       const taskStakeListJSON = await namespaceWrapper.getTaskState({ is_stake_list_required: true });
-      if (!taskStakeListJSON) {
-        console.error('Error fetching stake list');
+      if (!taskStakeListJSON || !taskStakeListJSON.stake_list) {
+        console.error('Error fetching stake list or stake list is missing.');
         return distributionList;
       }
 
@@ -69,24 +74,26 @@ class Distribution {
         } else {
           // If the submission is invalid, reduce the player's stake
           const playerStake = taskStakeListJSON.stake_list[playerPublicKey];
-          const slashedStake = playerStake * 0.7;
-          distributionList[playerPublicKey] = -slashedStake;
-          console.log('Penalty for player:', playerPublicKey, slashedStake);
+          if (playerStake) {
+            const slashedStake = Math.floor(playerStake * 0.7);
+            distributionList[playerPublicKey] = -slashedStake;
+            console.log('Penalty applied for player:', playerPublicKey, 'Penalty:', slashedStake);
+          } else {
+            console.log('Player', playerPublicKey, 'has no stake.');
+          }
         }
       }
 
       if (validPlayers.length === 0 || totalStake === 0) {
-        console.log('No valid players or total stake is zero.');
+        console.warn('No valid players or total stake is zero.');
         return distributionList;
       }
 
       console.log('Total stake of valid players:', totalStake);
 
-      // 60% of the pool is distributed proportionally based on stake
-      const proportionalPool = totalStake * 0.6;
-
-      // 40% of the pool is distributed equally among valid players
-      const equalPool = totalStake * 0.4;
+      // Calculate proportional and equal pools
+      const proportionalPool = rewardPool * 0.6; // 60% of reward pool
+      const equalPool = rewardPool * 0.4; // 40% of reward pool
       const equalReward = Math.floor(equalPool / validPlayers.length);
 
       // Distribute rewards
@@ -115,7 +122,6 @@ class Distribution {
    * @returns {boolean} Result of the check for data changes
    */
   checkIfSubmissionHasChanges(submission) {
-    // Simplified check: if there is any data in the submission, it's considered valid
     return submission && Object.keys(submission).length > 0;
   }
 

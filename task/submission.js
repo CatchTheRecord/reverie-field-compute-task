@@ -4,6 +4,8 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
+const MAX_TOTAL_SIZE = 512 * 1024; // Общий размер сабмишена не более 512 КБ
+
 class Submission {
   constructor() {
     this.client = new KoiiStorageClient();
@@ -53,9 +55,17 @@ class Submission {
         }
       );
 
-      if (!response.ok) return [];
-      return await response.json();
-    } catch {
+      if (!response.ok) {
+        console.error(`Failed to fetch player data. Status: ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+
+      // Если данные разбиты на чанки, объединяем их в массив
+      return data.chunks ? data.chunks.flat() : data;
+    } catch (error) {
+      console.error('Error fetching player data from server:', error);
       return [];
     }
   }
@@ -84,7 +94,8 @@ class Submission {
         await this.addKeyToCacheList(cacheKey);
         return true;
       }
-    } catch {
+    } catch (error) {
+      console.error('Error caching player data:', error);
       return false;
     }
   }
@@ -102,8 +113,8 @@ class Submission {
         cacheKeys.push(key);
         await namespaceWrapper.storeSet('cacheKeys', JSON.stringify(cacheKeys));
       }
-    } catch {
-      // Ошибки здесь не критичны, пропускаем их
+    } catch (error) {
+      console.error('Error adding key to cache list:', error);
     }
   }
 
@@ -114,11 +125,9 @@ class Submission {
    * @returns {boolean} - Результат проверки.
    */
   isPlayerDataChanged(cachedData, newData) {
-    return (
-      cachedData.total_points !== newData.total_points ||
-      cachedData.level !== newData.level ||
-      JSON.stringify(cachedData.relics || []) !== JSON.stringify(newData.relics || [])
-    );
+    const cachedDescriptions = JSON.stringify(cachedData.descriptions || []);
+    const newDescriptions = JSON.stringify(newData.descriptions || []);
+    return cachedDescriptions !== newDescriptions;
   }
 
   /**
@@ -134,10 +143,16 @@ class Submission {
         return;
       }
 
+      // Проверяем общий размер всех данных
+      const totalSize = Buffer.byteLength(JSON.stringify(cachedPlayersData), 'utf-8');
+      if (totalSize > MAX_TOTAL_SIZE) {
+        console.log('Total data size exceeds 512 KB. Submitting only the first chunk.');
+      }
+
       const submissionData = {
         round,
         timestamp: Date.now(),
-        cachedPlayersData,
+        data: cachedPlayersData.slice(0, Math.floor(MAX_TOTAL_SIZE / totalSize)), // Ограничиваем размер данных
       };
 
       const userStaking = await namespaceWrapper.getSubmitterAccount();
@@ -148,14 +163,14 @@ class Submission {
         await namespaceWrapper.checkSubmissionAndUpdateRound(ipfsCid, round);
         console.log('Submission completed with CID:', ipfsCid);
       }
-    } catch {
-      // Ошибки здесь не критичны, пропускаем их
+    } catch (error) {
+      console.error('Error during submission:', error);
     }
   }
 
   /**
    * Загрузка данных в IPFS.
-   * @param {Array} data - Данные для загрузки.
+   * @param {Object} data - Данные для загрузки.
    * @param {Object} userStaking - Информация об аккаунте.
    * @param {number} retries - Число попыток.
    * @returns {Promise<string>} - CID данных.
@@ -170,8 +185,9 @@ class Submission {
       try {
         const fileUploadResponse = await this.client.uploadFile(filePath, userStaking);
         return fileUploadResponse.cid;
-      } catch {
+      } catch (error) {
         retries--;
+        console.error('Error uploading to IPFS, retries left:', retries, error);
         if (retries > 0) {
           await new Promise((resolve) => setTimeout(resolve, 5000));
         }
@@ -197,7 +213,8 @@ class Submission {
       }
 
       return playersData;
-    } catch {
+    } catch (error) {
+      console.error('Error fetching cached player data:', error);
       return [];
     }
   }

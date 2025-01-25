@@ -40,8 +40,9 @@ class Distribution {
       let validPlayers = [];
       let totalStake = 0;
 
-      // Fixed reward pool for the current round
-      const rewardPool = 250; // Adjust as necessary
+      // Fixed reward pool for the current round in SOL
+      const rewardPoolInSOL = 250; // Adjust as necessary
+      const rewardPoolInLamports = rewardPoolInSOL * 1e9; // Convert to Lamports
 
       // Fetch submission data for the current round
       const taskAccountDataJSON = await namespaceWrapper.getTaskSubmissionInfo(round);
@@ -91,9 +92,9 @@ class Distribution {
 
       console.log('Total stake of valid players:', totalStake);
 
-      // Calculate proportional and equal pools
-      const proportionalPool = rewardPool * 0.6; // 60% of reward pool
-      const equalPool = rewardPool * 0.4; // 40% of reward pool
+      // Calculate proportional and equal pools in Lamports
+      const proportionalPool = rewardPoolInLamports * 0.6; // 60% of reward pool
+      const equalPool = rewardPoolInLamports * 0.4; // 40% of reward pool
       const equalReward = Math.floor(equalPool / validPlayers.length);
 
       // Distribute rewards
@@ -108,7 +109,7 @@ class Distribution {
         );
       }
 
-      console.log('Final distribution list:', distributionList);
+      console.log('Final distribution list (in Lamports):', distributionList);
       return distributionList;
     } catch (err) {
       console.error('Error generating distribution list:', err);

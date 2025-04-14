@@ -41,7 +41,7 @@ class Distribution {
       let totalStake = 0;
 
       // Fixed reward pool for the current round in SOL
-      const rewardPoolInSOL = 250; // Adjust as necessary
+      const rewardPoolInSOL = 2500; // Adjust as necessary
       const rewardPoolInLamports = rewardPoolInSOL * 1e9; // Convert to Lamports
 
       // Fetch submission data for the current round
